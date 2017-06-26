@@ -1,0 +1,17 @@
+extensions:
+  preprocessors:
+  - extensions.contentful_ext.ContentfulPreprocessor
+
+preprocessors:
+- kind: contentful
+  autorun: true
+  inject: true
+  space: exampleContentfulSpaceId
+  keys:
+    preview: exampleContentfulPreviewKey
+    production: exampleContentfulProductionKey
+  bind:
+  - collection: /content/exampleModel1/
+    contentModel: exampleModel1
+  - collection: /content/exampleModel2/
+    contentModel: exampleModel2
