@@ -72,6 +72,10 @@ class ContentfulPreprocessor(grow.Preprocessor):
             if entry.sys['contentType']['sys']['id'] != contentful_model:
                 continue
             fields, body, basename = self._parse_entry(entry)
+            # TODO: Ensure `create_doc` doesn't die if the file doesn't exist.
+            path = os.path.join(collection.pod_path, basename)
+            if not self.pod.file_exists(path):
+                self.pod.write_yaml(path, {})
             doc = collection.create_doc(basename, fields=fields, body=body)
             new_pod_paths.append(doc.pod_path)
             self.pod.logger.info('Saved -> {}'.format(doc.pod_path))

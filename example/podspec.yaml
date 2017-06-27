@@ -6,12 +6,12 @@ preprocessors:
 - kind: contentful
   autorun: true
   inject: true
-  space: exampleContentfulSpaceId
+  space: cfexampleapi
   keys:
-    preview: exampleContentfulPreviewKey
-    production: exampleContentfulProductionKey
+    # preview: exampleContentfulPreviewKey
+    production: b4c0n73n7fu1
   bind:
-  - collection: /content/exampleModel1/
-    contentModel: exampleModel1
-  - collection: /content/exampleModel2/
-    contentModel: exampleModel2
+  - collection: /content/city/
+    contentModel: city
+  - collection: /content/cat/
+    contentModel: cat
