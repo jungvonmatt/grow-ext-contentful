@@ -26,6 +26,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         space = messages.StringField(2)
         keys = messages.MessageField(KeyMessage, 3)
         bind = messages.MessageField(BindingMessage, 4, repeated=True)
+        limit = messages.IntegerField(5)
 
     def _parse_field(self, field):
         if isinstance(field, resources.Asset):
@@ -85,7 +86,10 @@ class ContentfulPreprocessor(grow.Preprocessor):
             self.pod.logger.info('Deleted -> {}'.format(pod_path))
 
     def run(self, *args, **kwargs):
-        entries = self.cda.fetch(resources.Entry).all()
+        request = self.cda.fetch(resources.Entry)
+        if self.config.limit:
+            request.params['limit'] = self.config.limit
+        entries = request.all()
         for binding in self.config.bind:
             self.bind_collection(entries, binding.collection,
                                  binding.contentModel)

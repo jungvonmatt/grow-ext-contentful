@@ -36,4 +36,6 @@ preprocessors:
     contentModel: exampleModel1
   - collection: /content/exampleModel2/
     contentModel: exampleModel2
+  limit: 100
 ```
+Note: Limit value is optional, 0 or none will set it to its default value wich is 100. And can not be greater than 1000 or the contentful api will throw a BadRequestError.
