@@ -1,8 +1,24 @@
-bestFriend: nyancat
-birthday: '2003-10-28T23:00:00+00:00'
+best_friend: &id001
+  best_friend:
+    best_friend: *id001
+    birthday: &id002 2003-10-28 23:00:00
+    color: gray
+    image: //images.ctfassets.net/cfexampleapi/3MZPnjZTIskAIIkuuosCss/382a48dfa2cb16c47aa2c72f7b23bf09/happycatw.jpg
+    likes: &id003
+    - cheezburger
+    lives: 1
+    name: Happy Cat
+  birthday: 2011-04-04 22:00:00
+  color: rainbow
+  image: //images.ctfassets.net/cfexampleapi/4gp6taAwW4CmSgumq2ekUm/9da0cd1936871b8d72343e895a00d611/Nyan_cat_250px_frame.png
+  likes:
+  - rainbows
+  - fish
+  lives: 1337
+  name: Nyan Cat
+birthday: *id002
 color: gray
-image: //images.contentful.com/cfexampleapi/3MZPnjZTIskAIIkuuosCss/382a48dfa2cb16c47aa2c72f7b23bf09/happycatw.jpg
-likes:
-- cheezburger
+image: //images.ctfassets.net/cfexampleapi/3MZPnjZTIskAIIkuuosCss/382a48dfa2cb16c47aa2c72f7b23bf09/happycatw.jpg
+likes: *id003
 lives: 1
 name: Happy Cat

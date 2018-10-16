@@ -3,8 +3,8 @@ from grow.common import utils
 from protorpc import messages
 import datetime
 import grow
-import json
 import os
+import yaml
 
 
 class BindingMessage(messages.Message):
@@ -18,21 +18,6 @@ class ContentfulPreprocessor(grow.Preprocessor):
     _edit_space_url_format = 'https://app.contentful.com/spaces/{space}/entries'
     _preview_endpoint = 'preview.contentful.com'
 
-    def encoder(self):
-        preprocessor = self
-        class ContentfulEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if isinstance(obj, datetime.datetime):
-                    return obj.isoformat()
-                if hasattr(obj, 'type') and obj.type == 'Entry':
-                    return obj.fields()
-                if hasattr(obj, 'type') and obj.type == 'Link':
-                    return obj.raw
-                if hasattr(obj, 'type') and obj.type == 'Asset':
-                    return obj.url()
-                return json.JSONEncoder.default(self, obj)
-        return ContentfulEncoder
-
     class Config(messages.Message):
         space = messages.StringField(2)
         access_token = messages.StringField(3)
@@ -42,27 +27,45 @@ class ContentfulPreprocessor(grow.Preprocessor):
 
     def _parse_entry(self, entry):
         """Parses an entry from Contentful."""
-        body = entry.fields.pop('body', None)
-        fields = entry.fields
-        for key, field in entry.fields.iteritems():
-          entry.fields[key] = self._parse_field(field)
-        if body:
-            body = body
-            ext = 'md'
-        else:
-            body = ''
-            ext = 'yaml'
-        if 'title' in entry.fields:
-            entry.fields['$title'] = entry.fields.pop('title')
-        if 'slug' in entry.fields:
-            entry.fields['$slug'] = entry.fields.pop('slug')
-        if 'category' in entry.fields:
-            category = entry.fields.pop('category')
-            entry.fields['$category'] = category
-        basename = '{}.{}'.format(entry.sys['id'], ext)
-        if isinstance(body, unicode):
-            body = body.encode('utf-8')
-        return fields, body, basename
+        fields = entry.fields()
+
+        def asset_representer(dumper, obj):
+            tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
+            return dumper.represent_scalar(tag, obj.url())
+
+        def link_representer(dumper, obj):
+            tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
+            obj = obj.resolve(self.client)
+            if isinstance(obj, contentful.Asset):
+                return dumper.represent_scalar(tag, obj.url())
+            fields = obj.fields()
+            return dumper.represent_mapping(
+                yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                fields)
+
+        def entry_representer(dumper, obj):
+            if hasattr(obj, 'resolve'):
+                fields = obj.resolve(self.client)
+            else:
+                fields = obj.fields()
+            return dumper.represent_mapping(
+                yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                fields)
+
+        # Round trip to YAML to normalize the content.
+        yaml.add_representer(contentful.Asset, asset_representer)
+        yaml.add_representer(contentful.Link, link_representer)
+        yaml.add_representer(contentful.Entry, entry_representer)
+        result = yaml.dump(fields, default_flow_style=False)
+        fields = yaml.load(result)
+        if 'title' in fields:
+            fields['$title'] = fields.pop('title')
+        if 'slug' in fields:
+            fields['$slug'] = fields.pop('slug')
+        if 'category' in fields:
+            fields['$category'] = fields.pop('category')
+        basename = '{}.yaml'.format(entry.sys['id'])
+        return fields, basename
 
     def bind_collection(self, entries, collection_pod_path):
         """Binds a Grow collection to a Contentful collection."""
@@ -71,19 +74,14 @@ class ContentfulPreprocessor(grow.Preprocessor):
             doc.pod_path for doc in collection.list_docs(recursive=False, inject=False)]
         new_pod_paths = []
         for i, entry in enumerate(entries):
-            result = json.dumps(entry.fields(), cls=self.encoder())
-            print result
-
-#            if entry.sys['contentType']['sys']['id'] != contentful_model:
-#                continue
-#            fields, body, basename = self._parse_entry(entry)
-#            # TODO: Ensure `create_doc` doesn't die if the file doesn't exist.
-#            path = os.path.join(collection.pod_path, basename)
-#            if not self.pod.file_exists(path):
-#                self.pod.write_yaml(path, {})
-#            doc = collection.create_doc(basename, fields=fields, body=body)
-#            new_pod_paths.append(doc.pod_path)
-#            self.pod.logger.info('Saved -> {}'.format(doc.pod_path))
+            fields, basename = self._parse_entry(entry)
+            # TODO: Ensure `create_doc` doesn't die if the file doesn't exist.
+            path = os.path.join(collection.pod_path, basename)
+            if not self.pod.file_exists(path):
+                self.pod.write_yaml(path, {})
+            doc = collection.create_doc(basename, fields=fields)
+            new_pod_paths.append(doc.pod_path)
+            self.pod.logger.info('Saved -> {}'.format(doc.pod_path))
 
         pod_paths_to_delete = set(existing_pod_paths) - set(new_pod_paths)
         for pod_path in pod_paths_to_delete:
@@ -95,6 +93,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
             content_type = binding.content_type
             entries = self.client.entries({
                 'content_type': content_type,
+                'locale': '*',
             })
             self.bind_collection(entries, binding.collection)
 
@@ -105,8 +104,17 @@ class ContentfulPreprocessor(grow.Preprocessor):
         access_token = self.config.access_token
         if self.config.preview:
             api_url = 'preview.contentful.com'
-            return contentful.Client(self.config.space, access_token, api_url=api_url)
-        return contentful.Client(self.config.space, access_token)
+            return contentful.Client(
+                    self.config.space,
+                    access_token,
+                    api_url=api_url,
+                    reuse_entries=True,
+                    max_include_resolution_depth=20)
+        return contentful.Client(
+                self.config.space,
+                access_token,
+                reuse_entries=True,
+                max_include_resolution_depth=20)
 
     def can_inject(self, doc=None, collection=None):
         if not self.injected:
