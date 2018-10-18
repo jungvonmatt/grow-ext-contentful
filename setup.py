@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='grow-ext-contentful',
-    version='1.0.1',
+    version='2.0.0',
     license='MIT',
     author='Grow Authors',
     author_email='hello@grow.io',

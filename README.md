@@ -7,7 +7,9 @@ collections.
 
 ## Concept
 
-(WIP)
+- Binds Contentful collections to Grow collections.
+- Supports localized fields and localization.
+- Currently limited to 100 entries per collection.
 
 ## Usage
 
@@ -26,16 +28,14 @@ extensions:
 preprocessors:
 - kind: contentful
   autorun: true
-  inject: true
   space: exampleContentfulSpaceId
-  keys:
-    preview: exampleContentfulPreviewKey
-    production: exampleContentfulProductionKey
+  access_token: exampleContentfulProductionKey
+  # Uncomment to use the `preview` API.
+  # access_token: exampleContentfulPreviewKey
+  # preview: true
   bind:
   - collection: /content/exampleModel1/
-    contentModel: exampleModel1
+    content_type: exampleModel1
   - collection: /content/exampleModel2/
-    contentModel: exampleModel2
-  limit: 100
+    content_type: exampleModel2
 ```
-Note: Limit value is optional, 0 or none will set it to its default value wich is 100. And can not be greater than 1000 or the contentful api will throw a BadRequestError.
