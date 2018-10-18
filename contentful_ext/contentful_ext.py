@@ -75,6 +75,8 @@ class ContentfulPreprocessor(grow.Preprocessor):
             else:
                 fields = obj.fields()
             fields = _tag_localized_fields(obj, fields)
+            fields['_content_type'] = obj.sys['content_type'].id
+            fields['_id'] = obj.sys['id']
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 fields)
