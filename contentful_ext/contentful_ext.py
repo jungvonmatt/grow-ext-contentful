@@ -34,15 +34,20 @@ class ContentfulPreprocessor(grow.Preprocessor):
         """Parses an entry from Contentful."""
         default_locale = entry.default_locale
         raw_fields = entry.raw.get('fields', {})
+        all_locales = set()
 
-        def _tag_localized_fields(obj, fields):
+        def _tag_localized_fields(obj, fields, tag_built_ins=False):
             for key in fields.keys():
                 locales_for_field = raw_fields.get(key, [])
                 for locale in locales_for_field:
                     if default_locale == locale:
                         continue
                     tag_locale = normalize_locale(locale)
+                    all_locales.add(tag_locale)
                     tagged_key = '{}@{}'.format(key, tag_locale)
+                    # Support localized built-ins.
+                    if tag_built_ins and key in ['title', 'category']:
+                        tagged_key = '${}'.format(tagged_key)
                     localized_fields = obj.fields(locale)
                     if not localized_fields:
                         continue
@@ -79,15 +84,22 @@ class ContentfulPreprocessor(grow.Preprocessor):
         yaml.add_representer(contentful.Link, link_representer)
         yaml.add_representer(contentful.Entry, entry_representer)
         fields = entry.fields()
-        fields = _tag_localized_fields(entry, fields)
+        fields = _tag_localized_fields(entry, fields, tag_built_ins=True)
         result = yaml.dump(fields, default_flow_style=False)
         fields = yaml.load(result)
-        if 'title' in fields:
-            fields['$title'] = fields.pop('title')
         if 'slug' in fields:
             fields['$slug'] = fields.pop('slug')
+        if 'title' in fields:
+            fields['$title'] = fields.pop('title')
         if 'category' in fields:
             fields['$category'] = fields.pop('category')
+        # Only add `$localization:locales` if the entry is localized, otherwise
+        # just use the collection's default $localization, which is specified
+        # by the user in Grow and not Contenful.
+        if all_locales:
+            all_locales.add(normalize_locale(default_locale))
+            all_locales = list(all_locales)
+            fields['$localization'] = {'locales': all_locales}
         basename = '{}.yaml'.format(entry.sys['id'])
         return fields, basename
 
@@ -140,57 +152,6 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 access_token,
                 reuse_entries=True,
                 max_include_resolution_depth=20)
-
-    def can_inject(self, doc=None, collection=None):
-        if not self.injected:
-            return False
-        for binding in self.config.bind:
-            if doc and doc.pod_path.startswith(binding.collection):
-                return True
-            if (collection and
-                    self._normalize_path(collection.pod_path)
-                    == self._normalize_path(binding.collection)):
-                return True
-        return False
-
-    def inject(self, doc=None, collection=None):
-        """Conditionally injects data into documents or a collection, without
-        updating the filesystem. If doc is provided, the document's fields are
-        injected. If collection is provided, returns a list of injected
-        document instances."""
-        if doc is not None:
-            query = {'sys.id': doc.base}
-            entry = self.cda.fetch(resources.Entry).where(query).first()
-            if not entry:
-                self.pod.logger.info('Contentful entry not found: {}'.format(query))
-                return  # Corresponding doc not found in Contentful.
-            fields, body, basename = self._parse_entry(entry)
-            if isinstance(body, unicode):
-                body = body.encode('utf-8')
-            doc.inject(fields=fields, body=body)
-            return doc
-        elif collection is not None:
-            entries = self.cda.fetch(resources.Entry).all()
-            docs = []
-            for binding in self.config.bind:
-                if (self._normalize_path(collection.pod_path)
-                        != self._normalize_path(binding.collection)):
-                    continue
-                docs += self.create_doc_instances(
-                    entries, collection, binding.contentModel)
-            return docs
-
-    def create_doc_instances(self, entries, collection, contentful_model):
-        docs = []
-        for i, entry in enumerate(entries):
-            if entry.sys['contentType']['sys']['id'] != contentful_model:
-                continue
-            fields, body, basename = self._parse_entry(entry)
-            pod_path = os.path.join(collection.pod_path, basename)
-            doc = collection.get_doc(pod_path)
-            doc.inject(fields=fields, body=body)
-            docs.append(doc)
-        return docs
 
     def _normalize_path(self, path):
         """Normalizes a collection path."""
