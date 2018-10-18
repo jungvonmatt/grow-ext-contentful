@@ -7,6 +7,11 @@ import os
 import yaml
 
 
+def normalize_locale(locale):
+    # Converts a Contentful locale to a Grow (ICU) locale.
+    return locale.replace('-', '_')
+
+
 class BindingMessage(messages.Message):
     collection = messages.StringField(1)
     content_type = messages.StringField(2)
@@ -27,7 +32,22 @@ class ContentfulPreprocessor(grow.Preprocessor):
 
     def _parse_entry(self, entry):
         """Parses an entry from Contentful."""
-        fields = entry.fields()
+        default_locale = entry.default_locale
+        raw_fields = entry.raw.get('fields', {})
+
+        def _tag_localized_fields(obj, fields):
+            for key in fields.keys():
+                locales_for_field = raw_fields.get(key, [])
+                for locale in locales_for_field:
+                    if default_locale == locale:
+                        continue
+                    tag_locale = normalize_locale(locale)
+                    tagged_key = '{}@{}'.format(key, tag_locale)
+                    localized_fields = obj.fields(locale)
+                    if not localized_fields:
+                        continue
+                    fields[tagged_key] = localized_fields[key]
+            return fields
 
         def asset_representer(dumper, obj):
             tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
@@ -39,6 +59,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
             if isinstance(obj, contentful.Asset):
                 return dumper.represent_scalar(tag, obj.url())
             fields = obj.fields()
+            fields = _tag_localized_fields(obj, fields)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 fields)
@@ -48,6 +69,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 fields = obj.resolve(self.client)
             else:
                 fields = obj.fields()
+            fields = _tag_localized_fields(obj, fields)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 fields)
@@ -56,6 +78,8 @@ class ContentfulPreprocessor(grow.Preprocessor):
         yaml.add_representer(contentful.Asset, asset_representer)
         yaml.add_representer(contentful.Link, link_representer)
         yaml.add_representer(contentful.Entry, entry_representer)
+        fields = entry.fields()
+        fields = _tag_localized_fields(entry, fields)
         result = yaml.dump(fields, default_flow_style=False)
         fields = yaml.load(result)
         if 'title' in fields:
@@ -93,6 +117,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
             content_type = binding.content_type
             entries = self.client.entries({
                 'content_type': content_type,
+                'include': 10,
                 'locale': '*',
             })
             self.bind_collection(entries, binding.collection)
