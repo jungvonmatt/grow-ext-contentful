@@ -49,9 +49,9 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     if tag_built_ins and key in ['title', 'category']:
                         tagged_key = '${}'.format(tagged_key)
                     localized_fields = obj.fields(locale)
-                    if not localized_fields:
+                    if not localized_fields or key not in localized_fields:
                         continue
-                    fields[tagged_key] = localized_fields.get(key, key)
+                    fields[tagged_key] = localized_fields[key]
             return fields
 
         def asset_representer(dumper, obj):
