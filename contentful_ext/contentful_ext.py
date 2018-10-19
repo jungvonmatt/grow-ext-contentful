@@ -51,7 +51,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     localized_fields = obj.fields(locale)
                     if not localized_fields:
                         continue
-                    fields[tagged_key] = localized_fields[key]
+                    fields[tagged_key] = localized_fields.get(key, key)
             return fields
 
         def asset_representer(dumper, obj):
