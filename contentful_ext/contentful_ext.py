@@ -36,12 +36,12 @@ class ContentfulPreprocessor(grow.Preprocessor):
         raw_fields = entry.raw.get('fields', {})
         all_locales = set()
 
-        def _tag_localized_fields(obj, fields, tag_built_ins=False):
-            # Use the page's "title" field to determine all the locales that
-            # the page is in.
-            # TODO(stevenle): this needs a better impl.
-            locales_for_field = raw_fields.get('title', [])
+        # Use the page's "title" field to determine all the locales that
+        # the page is in.
+        # TODO(stevenle): this needs a better impl.
+        locales_for_field = raw_fields.get('title', [])
 
+        def _tag_localized_fields(obj, fields, tag_built_ins=False):
             for key in fields.keys():
                 # locales_for_field = raw_fields.get(key, [])
                 for locale in locales_for_field:
@@ -60,14 +60,17 @@ class ContentfulPreprocessor(grow.Preprocessor):
             return fields
 
         def asset_representer(dumper, obj):
-            tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
-            return dumper.represent_scalar(tag, obj.url())
+            # Assets are represented as structured objects, which can be
+            # localized and also contain metadata.
+            fields = obj.fields()
+            fields = _tag_localized_fields(obj, fields)
+            return dumper.represent_mapping(
+                yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                fields)
 
         def link_representer(dumper, obj):
             tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
             obj = obj.resolve(self.client)
-            if isinstance(obj, contentful.Asset):
-                return dumper.represent_scalar(tag, obj.url())
             fields = obj.fields()
             fields = _tag_localized_fields(obj, fields)
             return dumper.represent_mapping(
@@ -75,10 +78,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 fields)
 
         def entry_representer(dumper, obj):
-            if hasattr(obj, 'resolve'):
-                fields = obj.resolve(self.client)
-            else:
-                fields = obj.fields()
+            fields = obj.fields()
             fields = _tag_localized_fields(obj, fields)
             fields['_content_type'] = obj.sys['content_type'].id
             fields['_id'] = obj.sys['id']
