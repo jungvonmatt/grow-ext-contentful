@@ -1,3 +1,5 @@
+_content_type: cat
+_id: nyancat
 best_friend: &id001
   _content_type: cat
   _id: happycat

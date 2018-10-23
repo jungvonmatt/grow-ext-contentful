@@ -28,14 +28,19 @@ extensions:
 preprocessors:
 - kind: contentful
   autorun: true
+
   space: exampleContentfulSpaceId
   access_token: exampleContentfulProductionKey
+
   # Uncomment to use the `preview` API.
   # access_token: exampleContentfulPreviewKey
   # preview: true
+
   bind:
   - collection: /content/exampleModel1/
     content_type: exampleModel1
+    # Optional. The field used to generate the basename of the Grow document.
+    key: slug
   - collection: /content/exampleModel2/
     content_type: exampleModel2
 ```

@@ -15,6 +15,7 @@ def normalize_locale(locale):
 class BindingMessage(messages.Message):
     collection = messages.StringField(1)
     content_type = messages.StringField(2)
+    key = messages.StringField(3)
 
 
 class ContentfulPreprocessor(grow.Preprocessor):
@@ -30,7 +31,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         limit = messages.IntegerField(5)
         preview = messages.BooleanField(6, default=False)
 
-    def _parse_entry(self, entry):
+    def _parse_entry(self, entry, key=None):
         """Parses an entry from Contentful."""
         default_locale = entry.default_locale
         raw_fields = entry.raw.get('fields', {})
@@ -94,6 +95,12 @@ class ContentfulPreprocessor(grow.Preprocessor):
         fields = _tag_localized_fields(entry, fields, tag_built_ins=True)
         result = yaml.dump(fields, default_flow_style=False)
         fields = yaml.load(result)
+
+        # Retrieve the key used for the basename from the fields, otherwise use
+        # the enry's sys.id.
+        normalized_key = fields.get(key) if key else entry.sys['id']
+        basename = '{}.yaml'.format(normalized_key)
+
         if 'slug' in fields:
             fields['$slug'] = fields.pop('slug')
         if 'title' in fields:
@@ -107,17 +114,16 @@ class ContentfulPreprocessor(grow.Preprocessor):
             all_locales.add(normalize_locale(default_locale))
             all_locales = list(all_locales)
             fields['$localization'] = {'locales': all_locales}
-        basename = '{}.yaml'.format(entry.sys['id'])
         return fields, basename
 
-    def bind_collection(self, entries, collection_pod_path):
+    def bind_collection(self, entries, collection_pod_path, key=None):
         """Binds a Grow collection to a Contentful collection."""
         collection = self.pod.get_collection(collection_pod_path)
         existing_pod_paths = [
             doc.pod_path for doc in collection.list_docs(recursive=False, inject=False)]
         new_pod_paths = []
         for i, entry in enumerate(entries):
-            fields, basename = self._parse_entry(entry)
+            fields, basename = self._parse_entry(entry, key=key)
             # TODO: Ensure `create_doc` doesn't die if the file doesn't exist.
             path = os.path.join(collection.pod_path, basename)
             if not self.pod.file_exists(path):
@@ -139,7 +145,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 'include': 10,
                 'locale': '*',
             })
-            self.bind_collection(entries, binding.collection)
+            self.bind_collection(entries, binding.collection, key=binding.key)
 
     @property
     @utils.memoize
