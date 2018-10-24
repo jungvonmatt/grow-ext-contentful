@@ -71,9 +71,13 @@ class ContentfulPreprocessor(grow.Preprocessor):
 
         def link_representer(dumper, obj):
             tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
-            obj = obj.resolve(self.client)
-            fields = obj.fields()
-            fields = _tag_localized_fields(obj, fields)
+            fields = {}
+            try:
+                obj = obj.resolve(self.client)
+                fields = obj.fields()
+                fields = _tag_localized_fields(obj, fields)
+            except contentful.errors.NotFoundError as e:
+                self.pod.logger.error(e)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 fields)
