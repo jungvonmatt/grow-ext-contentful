@@ -76,7 +76,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 obj = obj.resolve(self.client)
                 fields = obj.fields()
                 fields = _tag_localized_fields(obj, fields)
-            except contentful.errors.NotFoundError as e:
+            except (contentful.errors.NotFoundError, contentful.client.EntryNotFoundError) as e:
                 self.pod.logger.error(e)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
