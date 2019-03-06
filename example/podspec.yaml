@@ -11,3 +11,6 @@ preprocessors:
   bind:
   - collection: /content/cat/
     content_type: cat
+  rewrite_locales:
+  - rewrite: en_US
+    to: en

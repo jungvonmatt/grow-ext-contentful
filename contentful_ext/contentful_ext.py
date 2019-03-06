@@ -7,15 +7,15 @@ import os
 import yaml
 
 
-def normalize_locale(locale):
-    # Converts a Contentful locale to a Grow (ICU) locale.
-    return locale.replace('-', '_')
-
-
 class BindingMessage(messages.Message):
     collection = messages.StringField(1)
     content_type = messages.StringField(2)
     key = messages.StringField(3)
+
+
+class RewriteLocalesMessage(messages.Message):
+    rewrite = messages.StringField(1)
+    to = messages.StringField(2)
 
 
 class ContentfulPreprocessor(grow.Preprocessor):
@@ -30,6 +30,17 @@ class ContentfulPreprocessor(grow.Preprocessor):
         bind = messages.MessageField(BindingMessage, 4, repeated=True)
         limit = messages.IntegerField(5)
         preview = messages.BooleanField(6, default=False)
+        rewrite_locales = messages.MessageField(RewriteLocalesMessage, 7, repeated=True)
+
+    def normalize_locale(self, locale):
+        # Converts a Contentful locale to a Grow (ICU) locale.
+        clean_locale = locale.replace('-', '_')
+        # Allow user-supplied rewriting of locales.
+        if self.config.rewrite_locales:
+            for item in self.config.rewrite_locales:
+                if clean_locale == item.rewrite:
+                    return item.to
+        return clean_locale
 
     def _parse_entry(self, entry, key=None):
         """Parses an entry from Contentful."""
@@ -48,7 +59,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 for locale in locales_for_field:
                     if default_locale == locale:
                         continue
-                    tag_locale = normalize_locale(locale)
+                    tag_locale = self.normalize_locale(locale)
                     all_locales.add(tag_locale)
                     tagged_key = '{}@{}'.format(key, tag_locale)
                     # Support localized built-ins.
@@ -115,7 +126,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         # just use the collection's default $localization, which is specified
         # by the user in Grow and not Contenful.
         if all_locales:
-            all_locales.add(normalize_locale(default_locale))
+            all_locales.add(self.normalize_locale(default_locale))
             all_locales = list(all_locales)
             fields['$localization'] = {'locales': all_locales}
         return fields, basename
