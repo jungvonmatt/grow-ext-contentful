@@ -13,6 +13,12 @@ class BindingMessage(messages.Message):
     key = messages.StringField(3)
 
 
+class VariationMessage(messages.Message):
+    field = messages.StringField(1)
+    path_format = messages.StringField(2)
+    separator = messages.StringField(3)
+
+
 class RewriteLocalesMessage(messages.Message):
     rewrite = messages.StringField(1)
     to = messages.StringField(2)
@@ -31,6 +37,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         limit = messages.IntegerField(5)
         preview = messages.BooleanField(6, default=False)
         rewrite_locales = messages.MessageField(RewriteLocalesMessage, 7, repeated=True)
+        variation = messages.MessageField(VariationMessage, 8)
 
     def normalize_locale(self, locale):
         # Converts a Contentful locale to a Grow (ICU) locale.
@@ -116,12 +123,28 @@ class ContentfulPreprocessor(grow.Preprocessor):
         normalized_key = fields.get(key) if key else entry.sys['id']
         basename = '{}.yaml'.format(normalized_key)
 
+        # Support extracting the variation if it is enabled in podspec.yaml and
+        # the slug matches the variation format. For example, a slug could be
+        # named 'foo--bar', indicating this document is the 'bar' generation of
+        # the 'foo' document.
+        if self.config.variation:
+            separator = self.config.variation.separator or '--'
+            field = self.config.variation.field or 'slug'
+            varied_path = self.config.variation.path_format
+            if separator in fields.get(field, ''):
+                parts_slug = fields[field]
+                clean_slug, variation_name = parts_slug.split(separator)
+                varied_path = varied_path.replace('{variation}', variation_name)
+                fields['$path'] = varied_path
+                fields['slug'] = clean_slug
+
         if 'slug' in fields:
             fields['$slug'] = fields.pop('slug')
         if 'title' in fields:
             fields['$title'] = fields.pop('title')
         if 'category' in fields:
             fields['$category'] = fields.pop('category')
+
         # Only add `$localization:locales` if the entry is localized, otherwise
         # just use the collection's default $localization, which is specified
         # by the user in Grow and not Contenful.
