@@ -38,6 +38,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         preview = messages.BooleanField(6, default=False)
         rewrite_locales = messages.MessageField(RewriteLocalesMessage, 7, repeated=True)
         variation = messages.MessageField(VariationMessage, 8)
+        default_locale = messages.StringField(9, default='en-US')
 
     def normalize_locale(self, locale):
         # Converts a Contentful locale to a Grow (ICU) locale.
@@ -196,11 +197,13 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     self.config.space,
                     access_token,
                     api_url=api_url,
+                    default_locale=self.config.default_locale,
                     reuse_entries=True,
                     max_include_resolution_depth=20)
         return contentful.Client(
                 self.config.space,
                 access_token,
+                default_locale=self.config.default_locale,
                 reuse_entries=True,
                 max_include_resolution_depth=20)
 
