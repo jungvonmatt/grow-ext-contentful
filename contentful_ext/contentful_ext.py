@@ -71,7 +71,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     all_locales.add(tag_locale)
                     tagged_key = '{}@{}'.format(key, tag_locale)
                     # Support localized built-ins.
-                    if tag_built_ins and key in ['title', 'category']:
+                    if tag_built_ins and key in ['title', 'category', 'slug']:
                         tagged_key = '${}'.format(tagged_key)
                     localized_fields = obj.fields(locale)
                     if not localized_fields or key not in localized_fields:
