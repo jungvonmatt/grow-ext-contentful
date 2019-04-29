@@ -119,6 +119,10 @@ class ContentfulPreprocessor(grow.Preprocessor):
         result = yaml.dump(fields, default_flow_style=False)
         fields = yaml.load(result)
 
+        # Make sure fields still contain _content_type and _id
+        fields['_content_type'] = entry.sys.get('content_type', {}).id
+        fields['_id'] = entry.sys.get('id')
+
         # Retrieve the key used for the basename from the fields, otherwise use
         # the enry's sys.id.
         normalized_key = fields.get(key) if key else entry.sys['id']
