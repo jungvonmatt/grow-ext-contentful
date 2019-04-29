@@ -5,6 +5,7 @@ import datetime
 import grow
 import os
 import yaml
+from yaml.loader import UnsafeLoader
 
 
 class BindingMessage(messages.Message):
@@ -117,7 +118,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         fields = entry.fields()
         fields = _tag_localized_fields(entry, fields, tag_built_ins=True)
         result = yaml.dump(fields, default_flow_style=False)
-        fields = yaml.load(result)
+        fields = yaml.load(result, Loader=UnsafeLoader)
 
         # Make sure fields still contain _content_type and _id
         fields['_content_type'] = entry.sys.get('content_type', {}).id
