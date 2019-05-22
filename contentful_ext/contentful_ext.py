@@ -40,7 +40,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         rewrite_locales = messages.MessageField(RewriteLocalesMessage, 7, repeated=True)
         variation = messages.MessageField(VariationMessage, 8)
         default_locale = messages.StringField(9, default='en-US')
-        environment = messages.StringField(10, default='MASTER')
+        environment = messages.StringField(10, default='master')
 
     def normalize_locale(self, locale):
         # Converts a Contentful locale to a Grow (ICU) locale.
