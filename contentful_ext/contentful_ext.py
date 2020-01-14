@@ -1,7 +1,6 @@
 import contentful
 from grow.common import utils
 from protorpc import messages
-import datetime
 import grow
 import os
 import yaml
@@ -41,6 +40,8 @@ class ContentfulPreprocessor(grow.Preprocessor):
         variation = messages.MessageField(VariationMessage, 8)
         default_locale = messages.StringField(9, default='en-US')
         environment = messages.StringField(10, default='master')
+        # to avoid creation of huge yaml files fields in related entries can be removed
+        skip_related_fields = messages.StringField(11, repeated=True)
 
     def normalize_locale(self, locale):
         # Converts a Contentful locale to a Grow (ICU) locale.
@@ -106,6 +107,13 @@ class ContentfulPreprocessor(grow.Preprocessor):
         def entry_representer(dumper, obj):
             fields = obj.fields()
             fields = _tag_localized_fields(obj, fields)
+
+            if self.config.skip_related_fields:
+                # To reduce yaml size: remove unwanted fields if the entry has them
+                for skip_field in self.config.skip_related_fields:
+                    if skip_field in fields.keys():
+                        del fields[skip_field]
+
             fields['_content_type'] = obj.sys['content_type'].id
             fields['_id'] = obj.sys['id']
             return dumper.represent_mapping(
