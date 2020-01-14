@@ -5,6 +5,9 @@
 Contentful extension for Grow. Binds Contentful collections to Grow
 collections.
 
+Customized Jung von Matt version with extra functionality!
+
+
 ## Concept
 
 - Binds Contentful collections to Grow collections.
@@ -35,6 +38,11 @@ preprocessors:
   # Uncomment to use the `preview` API.
   # access_token: exampleContentfulPreviewKey
   # preview: true
+
+  # When the contet structure has references like teasers that blow up the page yaml
+  # uncomment and edit the following lines to skip those fields in related entries
+  # skip_related_fields:
+  # - teaser
 
   bind:
   - collection: /content/exampleModel1/
