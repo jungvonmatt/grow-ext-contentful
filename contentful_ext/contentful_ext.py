@@ -3,6 +3,7 @@ from grow.common import utils
 from protorpc import messages
 import grow
 import os
+import copy
 import yaml
 from yaml.loader import UnsafeLoader
 
@@ -105,7 +106,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                 fields)
 
         def entry_representer(dumper, obj):
-            fields = obj.fields()
+            fields = copy.copy(obj.fields())
             fields = _tag_localized_fields(obj, fields)
 
             if self.config.skip_related_fields:
