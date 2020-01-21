@@ -3,6 +3,7 @@ from grow.common import utils
 from protorpc import messages
 import grow
 import os
+import re
 import yaml
 from yaml.loader import UnsafeLoader
 
@@ -204,11 +205,24 @@ class ContentfulPreprocessor(grow.Preprocessor):
     @utils.memoize
     def client(self):
         """Contentful API client."""
-        access_token = self.config.access_token
+        # Check if `space` and `access_token` inputs are environment variables eg. ${CTF_SPACE_ID}
+        match_env_var_space = re.search('\${(.*)}', self.config.space)
+        match_env_var_access_token = re.search('\${(.*)}', self.config.access_token)
+
+        if match_env_var_space:
+            space = os.environ[match_env_var_space.group(1)]
+        else:
+            space = self.config.space
+
+        if match_env_var_access_token:
+            access_token = os.environ[match_env_var_access_token.group(1)]
+        else:
+            access_token = self.config.access_token
+
         if self.config.preview:
             api_url = 'preview.contentful.com'
             return contentful.Client(
-                    self.config.space,
+                    space,
                     access_token,
                     api_url=api_url,
                     default_locale=self.config.default_locale,
@@ -216,7 +230,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     environment=self.config.environment,
                     max_include_resolution_depth=20)
         return contentful.Client(
-                self.config.space,
+                space,
                 access_token,
                 default_locale=self.config.default_locale,
                 reuse_entries=True,
