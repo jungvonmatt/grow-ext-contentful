@@ -32,8 +32,11 @@ preprocessors:
 - kind: contentful
   autorun: true
 
-  space: exampleContentfulSpaceId
-  access_token: exampleContentfulProductionKey
+  # If you don't want to share your Contentful space_id and access_token
+  # you can export them as local environment variables and inject them with ${...}
+
+  space: exampleContentfulSpaceId || ${CTF_SPACE_ID}
+  access_token: exampleContentfulProductionKey || ${CTF_ACCESS_TOKEN}
 
   # Uncomment to use the `preview` API.
   # access_token: exampleContentfulPreviewKey
