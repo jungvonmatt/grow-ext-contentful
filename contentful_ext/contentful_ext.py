@@ -65,7 +65,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         # TODO(stevenle): this needs a better impl.
         locales_for_field = raw_fields.get('title', [])
 
-        def _tag_localized_fields(obj, fields, tag_built_ins=False):
+        def _tag_localized_fields(fields, tag_built_ins=False):
             for key in fields.keys():
                 # locales_for_field = raw_fields.get(key, [])
                 for locale in locales_for_field:
@@ -77,7 +77,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     # Support localized built-ins.
                     if tag_built_ins and key in ['title', 'category', 'slug']:
                         tagged_key = '${}'.format(tagged_key)
-                    localized_fields = obj.fields(locale)
+                    localized_fields = fields.get(locale)
                     if not localized_fields or key not in localized_fields:
                         continue
                     fields[tagged_key] = localized_fields[key]
@@ -87,27 +87,26 @@ class ContentfulPreprocessor(grow.Preprocessor):
             # Assets are represented as structured objects, which can be
             # localized and also contain metadata.
             fields = obj.fields()
-            fields = _tag_localized_fields(obj, fields)
+            fields = _tag_localized_fields(fields)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 fields)
 
         def link_representer(dumper, obj):
-            tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
-            fields = {}
             try:
                 obj = obj.resolve(self.client)
-                fields = obj.fields()
-                fields = _tag_localized_fields(obj, fields)
+                if obj.type == 'Entry':
+                    return entry_representer(dumper, obj)
+                return asset_representer(dumper, obj)
             except (contentful.errors.NotFoundError, contentful.client.EntryNotFoundError) as e:
                 self.pod.logger.error(e)
             return dumper.represent_mapping(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-                fields)
+                {})
 
         def entry_representer(dumper, obj):
             fields = copy.copy(obj.fields())
-            fields = _tag_localized_fields(obj, fields)
+            fields = _tag_localized_fields(fields)
 
             if self.config.skip_related_fields:
                 # To reduce yaml size: remove unwanted fields if the entry has them
@@ -126,7 +125,7 @@ class ContentfulPreprocessor(grow.Preprocessor):
         yaml.add_representer(contentful.Link, link_representer)
         yaml.add_representer(contentful.Entry, entry_representer)
         fields = entry.fields()
-        fields = _tag_localized_fields(entry, fields, tag_built_ins=True)
+        fields = _tag_localized_fields(fields, tag_built_ins=True)
         result = yaml.dump(fields, default_flow_style=False)
         fields = yaml.load(result, Loader=UnsafeLoader)
 
