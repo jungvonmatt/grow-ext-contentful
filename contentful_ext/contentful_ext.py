@@ -77,22 +77,10 @@ class ContentfulPreprocessor(grow.Preprocessor):
                     # Support localized built-ins.
                     if tag_built_ins and key in ['title', 'category', 'slug']:
                         tagged_key = '${}'.format(tagged_key)
-                    localized_fields = fields.get(locale)
 
-
-                    raw_field = raw_fields.get(key)
-                    localized_field = ''
-                    if (raw_field  and raw_field.get(locale)):
-                        localized_field = raw_field.get(locale)
-
-                    if localized_field:
-                        fields[tagged_key] = localized_field
-
-                    if not localized_fields or key not in localized_fields:
-                        continue
-
-
-                    fields[tagged_key] = localized_fields[key]
+                    field = raw_fields.get(key)
+                    if (field and field.get(locale)):
+                        fields[tagged_key] = field.get(locale)
             return fields
 
         def asset_representer(dumper, obj):
