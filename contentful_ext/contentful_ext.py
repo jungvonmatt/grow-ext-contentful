@@ -4,7 +4,6 @@ from protorpc import messages
 import grow
 import os
 import copy
-import json
 import yaml
 from yaml.loader import UnsafeLoader
 
@@ -66,15 +65,8 @@ class ContentfulPreprocessor(grow.Preprocessor):
         # TODO(stevenle): this needs a better impl.
         locales_for_field = raw_fields.get('title', [])
 
-
-
-
         def _tag_localized_fields(fields, raw_fields, tag_built_ins=False):
-            # jsonStr = json.dumps(fields.__dict__)
-
-
             for key in fields.keys():
-                # locales_for_field = raw_fields.get(key, [])
                 for locale in locales_for_field:
                     if default_locale == locale:
                         continue
